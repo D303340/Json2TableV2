@@ -30,10 +30,11 @@ namespace Json2TableV2.ViewModel
             }
         }
 
-        
+
         private dynamic root;
 
         private string currentFileName;
+        private string content;
         private string currentConvertion;
 
 
@@ -228,9 +229,7 @@ namespace Json2TableV2.ViewModel
         }
         #endregion
 
-
-
-        public void OpenJsonFile()
+        private void OpenJsonFile()
         {
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
@@ -244,66 +243,81 @@ namespace Json2TableV2.ViewModel
 
                 currentFileName = openFileDialog.SafeFileName;
 
-                // Clear previous items
-                ItemsObj.Clear();
-                ItemsObj = new ObservableCollection<dynamic>();
-
-
                 try
                 {
                     // Read the file
-                    string fileContent = File.ReadAllText(path);
-
-                    // Parse the JSON
-                    root = JsonConvert.DeserializeObject<JToken>(fileContent);
-
-
-                    // Check if the content is an array or object
-                    if (root is JArray jsonArray)
-                    {
-                        // Add each item in the array to the ObservableCollection
-                        foreach (var item in jsonArray)
-                        {
-                            if (item is JObject obj)
-                            {
-                                ItemsObj.Add(obj);
-                                OutputText = "ITS AN ARRAY:\n\n" + ItemsObj[0].ToString();
-                            }
-                        }
-                    }
-                    else if (root is JObject jsonObject)
-                    {
-                        // Handles Seperate Objects
-                        foreach (var item in jsonObject)
-                        {
-                            foreach (var item2 in jsonObject)
-                            {
-                                ItemsObj.Add(item2);
-                            }
-                            OutputText = "ITS AN OBJECT:\n\n" + ItemsObj[0].ToString();
-                        }
-                    }
-                    else
-                    {
-                        OutputText = "The JSON content is not an object or array.";
-                    }
-
-
+                    content = File.ReadAllText(path);
                 }
-                catch (JsonReaderException ex)
+                catch (Exception e)
                 {
-                    OutputText = "JSON Error: \n" + ex + "\n";
-                    return;
-                }
-                catch (IOException ex)
-                {
-                    OutputText = "I/O Error: \n" + ex + "\n";
-                    return;
+                    OutputText = e.Message;
                 }
             }
+
+            ItemsObj.Clear();
+            ItemsObj = new ObservableCollection<dynamic>();
+            ItemsObj = ParseFileToJson(content);
         }
 
-        #region DBML Converters
+        public ObservableCollection<dynamic> ParseFileToJson(string content)
+        {
+            // Clear previous items
+            //ItemsObj.Clear();
+            ObservableCollection<dynamic> items = new ObservableCollection<dynamic>();
+            //ItemsObj = new ObservableCollection<dynamic>();
+
+
+            try
+            {
+
+                // Parse the JSON
+                root = JsonConvert.DeserializeObject<JToken>(content);
+
+
+                // Check if the content is an array or object
+                if (root is JArray jsonArray)
+                {
+                    // Add each item in the array to the ObservableCollection
+                    foreach (var item in jsonArray)
+                    {
+                        if (item is JObject obj)
+                        {
+                            items.Add(obj);
+                        }
+                    }
+                }
+                else if (root is JObject jsonObject)
+                {
+                    // Handles Seperate Objects
+                    foreach (var item in jsonObject)
+                    {
+                        foreach (var item2 in jsonObject)
+                        {
+                            items.Add(item2);
+                        }
+                    }
+                }
+                else
+                {
+                    OutputText = "The JSON content is not an object or array.";
+                }
+            }
+            catch (JsonReaderException ex)
+            {
+                OutputText = "JSON Error: \n" + ex + "\n";
+                return new ObservableCollection<dynamic>();
+            }
+            catch (IOException ex)
+            {
+                OutputText = "I/O Error: \n" + ex + "\n";
+                return new ObservableCollection<dynamic>();
+            }
+
+            return items;
+
+        }
+
+        #region Table Converters
         public string ConvertJsonToDbml(dynamic json)
         {
             string dbml = "";
